@@ -43,6 +43,12 @@ async def index():
     return await send_from_directory(str(TEMPLATES_DIR), "index.html")
 
 
+@app.route("/files/<path:filename>")
+async def serve_file(filename):
+    """Serve an uploaded resume file."""
+    return await send_from_directory(str(UPLOAD_DIR), filename)
+
+
 @app.route("/upload", methods=["POST"])
 async def upload():
     """
@@ -51,41 +57,68 @@ async def upload():
       - files: one or more files
       - collection: (optional) collection/index name
     """
-    files = await request.files
-    form = await request.form
+    try:
+        files = await request.files
+        form = await request.form
 
-    collection = form.get("collection", DEFAULT_COLLECTION).strip()
-    if not collection:
-        collection = DEFAULT_COLLECTION
+        collection = form.get("collection", DEFAULT_COLLECTION).strip()
+        if not collection:
+            collection = DEFAULT_COLLECTION
+        # Sanitize: replace spaces and special chars
+        collection = collection.replace(" ", "_").lower()
 
-    uploaded = files.getlist("files")
-    if not uploaded:
-        return jsonify({"error": "No files uploaded"}), 400
+        uploaded = files.getlist("files")
+        if not uploaded:
+            return jsonify({"error": "No files uploaded"}), 400
 
-    saved_paths = []
-    for f in uploaded:
-        if not f.filename:
-            continue
-        ext = Path(f.filename).suffix.lower()
-        if ext not in (".pdf", ".docx", ".doc"):
-            continue
-        dest = UPLOAD_DIR / f.filename
-        await f.save(str(dest))
-        saved_paths.append(str(dest))
+        saved_paths = []
+        for f in uploaded:
+            if not f.filename:
+                continue
+            ext = Path(f.filename).suffix.lower()
+            if ext not in (".pdf", ".docx", ".doc"):
+                continue
+            dest = UPLOAD_DIR / f.filename
+            await f.save(str(dest))
+            saved_paths.append(str(dest))
 
-    if not saved_paths:
-        return jsonify({"error": "No valid PDF/DOCX files found"}), 400
+        if not saved_paths:
+            return jsonify({"error": "No valid PDF/DOCX files found"}), 400
 
-    # Run the ingestion pipeline in a thread to avoid blocking
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, collection_init, saved_paths, collection)
+        # Run the ingestion pipeline in a thread to avoid blocking
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, collection_init, saved_paths, collection)
 
-    return jsonify({
-        "status": "success",
-        "message": f"Ingested {len(saved_paths)} resume(s) into collection '{collection}'",
-        "files": [Path(p).name for p in saved_paths],
-        "collection": collection,
-    })
+        return jsonify({
+            "status": "success",
+            "message": f"Ingested {len(saved_paths)} resume(s) into '{collection}'",
+            "files": [Path(p).name for p in saved_paths],
+            "collection": collection,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/collections")
+async def list_collections():
+    """List all existing Endee indexes."""
+    try:
+        from endee import Endee
+        client = Endee()
+        client.set_base_url("http://127.0.0.1:8080/api/v1")
+        result = client.list_indexes()
+        index_list = result.get("indexes", []) if isinstance(result, dict) else result
+        names = []
+        for idx in index_list:
+            if isinstance(idx, dict):
+                name = idx.get("name", "")
+            else:
+                name = str(idx)
+            if name:
+                names.append(name)
+        return jsonify({"collections": names})
+    except Exception as e:
+        return jsonify({"collections": [], "error": str(e)})
 
 
 @app.route("/query")
@@ -118,7 +151,10 @@ async def query():
         def run_agent():
             try:
                 for token in execute(prompt=user_query, collection_name=collection, limit=limit):
-                    if token is not None and token != "":
+                    if isinstance(token, dict):
+                        # Sources payload — serialize as JSON
+                        token_queue.put(token)
+                    elif token is not None and token != "":
                         token_queue.put(str(token))
             except Exception as e:
                 token_queue.put(f"[Error: {e}]")

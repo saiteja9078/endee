@@ -9,14 +9,13 @@ from endee import Endee
 from fastembed import TextEmbedding, SparseTextEmbedding
 import uuid
 
-
 class SearchEngine:
     def __init__(self, dense_embed=None, sparse_embed=None, collection_name=None):
         self.collection_name = collection_name
 
         # Connect to local Endee instance
         self.client = Endee()
-        self.client.set_base_url("http://0.0.0.0:8080/api/v1")
+        self.client.set_base_url("http://127.0.0.1:8080/api/v1")
 
         # Embedding models
         self.dense_embed = (
