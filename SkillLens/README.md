@@ -11,9 +11,9 @@ Manual resume screening is time-consuming and error-prone. Recruiters often sift
 SkillLens solves this with a **Retrieval-Augmented Generation (RAG) pipeline** that:
 
 1. Understands the _meaning_ behind queries, not just keywords
-2. Retrieves the most relevant resume sections using hybrid vector search
-3. Uses an LLM to verify relevance and generate detailed candidate evaluations
-4. Presents results through a clean, real-time streaming interface
+2. Retrieves all resume chunks and scores every resume using hybrid vector search
+3. Ranks resumes by top-k mean similarity and lets the LLM control how many to return
+4. Generates detailed candidate evaluations streamed in real time
 
 ### Use Case
 
@@ -29,20 +29,23 @@ SkillLens solves this with a **Retrieval-Augmented Generation (RAG) pipeline** t
 User Query
     |
     v
-[Prompt Enhancement] --- Gemini 2.5 Flash rewrites the query
-    |                     for optimal retrieval
+[Prompt Enhancement] --- Gemini rewrites the query for retrieval
+    |                     AND extracts desired resume count (k)
     v
-[Hybrid Search] --------- Endee performs dense + sparse vector search
-    |                     across indexed resume chunks
+[Full Collection Search]  Endee hybrid search across ALL chunks
+    |                     (top_k = total elements in index)
     v
-[LLM Verification] ------ Gemini filters retrieved chunks for relevance
-    |                     (removes false positives)
+[Resume-Level Ranking] -- Group chunks by resume_id, compute
+    |                     top-3 chunk mean score per resume
+    v
+[Top-K Selection] ------- Take top k resumes (k from user query)
+    |                     Only these resumes proceed
     v
 [Streaming Analysis] ---- Gemini generates a detailed evaluation
     |                     streamed token-by-token via SSE
     v
-[Frontend Display] ------ Chat interface shows verified sources,
-                          analysis, and clickable resume links
+[Frontend Display] ------ Chat interface shows ranking table,
+                          sources, analysis, and resume PDF links
 ```
 
 ### Technical Stack
@@ -61,7 +64,7 @@ User Query
 
 ```
 SkillLens/
-|-- agent.py                    # RAG pipeline: prompt enhancement, verification, streaming
+|-- agent.py                    # RAG pipeline: prompt enhancement, ranking, streaming
 |-- app.py                      # Quart web server with REST + SSE endpoints
 |-- requirements.txt            # Python dependencies
 |-- .env                        # Environment variables (GOOGLE_API_KEY)
@@ -129,11 +132,13 @@ index.upsert(
 At query time, the user's query is embedded with the same models and searched against Endee using both dense and sparse vectors simultaneously:
 
 ```python
+# Retrieve ALL chunks to score every resume
+total = client.list_indexes()  # get total_elements count
 results = index.query(
     vector=query_dense_embedding,
     sparse_indices=query_sparse_indices,
     sparse_values=query_sparse_values,
-    top_k=8,
+    top_k=total_elements,  # fetch everything
 )
 ```
 
@@ -155,30 +160,43 @@ index = client.get_index(name="collection_name")  # Access specific collection
 
 ## RAG Pipeline Detail
 
-The RAG pipeline in `agent.py` consists of five stages:
+The RAG pipeline in `agent.py` consists of six stages:
 
-### Stage 1: Prompt Enhancement
+### Stage 1: Prompt Enhancement + Count Extraction
 
-The user's natural language query is rewritten by Gemini into a retrieval-optimized form. For example:
+The user's natural language query is sent to Gemini, which returns a JSON object containing both the retrieval-optimized query and the desired number of results:
 
 - Input: "find me a good AI engineer"
-- Enhanced: "Software engineer with hands-on experience in AI/ML, deep learning frameworks (PyTorch, TensorFlow), NLP, and production ML pipelines"
+- Output: `{"query": "AI/ML engineer with deep learning, PyTorch, TensorFlow, NLP...", "count": 1}`
 
-### Stage 2: Hybrid Search via Endee
+The LLM infers `count` from the user's phrasing: "a candidate" = 1, "top 5" = 5, plural with no number = 3.
 
-The enhanced prompt is embedded and searched against the Endee index using hybrid (dense + sparse) search, returning the top-k most similar resume chunks.
+### Stage 2: Full Collection Search via Endee
 
-### Stage 3: LLM Relevance Verification
+The enhanced prompt is embedded and searched against the entire Endee index using hybrid (dense + sparse) search with `top_k` set to the total number of elements in the collection. This ensures every chunk in every resume receives a similarity score.
 
-Retrieved chunks are sent to Gemini for relevance filtering. The LLM evaluates each chunk against the original query and returns only the resume IDs that genuinely match. This step eliminates false positives from vector search.
+### Stage 3: Resume-Level Ranking (Top-K Mean)
 
-### Stage 4: Streaming Analysis
+Chunks are grouped by `resume_id`. For each resume, the top 3 highest-scoring chunks are selected and their scores are averaged. This produces a single per-resume score that reflects the resume's best-matching sections without being diluted by irrelevant ones.
 
-Only verified chunks are passed to Gemini for the final evaluation. The response is streamed token-by-token via Server-Sent Events (SSE) for real-time display.
+```python
+# Example scoring:
+# Resume A chunks: [0.92, 0.85, 0.78, 0.30, 0.10] -> top 3 mean = 0.85
+# Resume B chunks: [0.65, 0.60, 0.55, 0.50, 0.48] -> top 3 mean = 0.60
+# Result: Resume A ranks higher
+```
 
-### Stage 5: Resume File Links
+### Stage 4: Top-K Selection
 
-After the analysis completes, the pipeline yields links to the actual PDF files of verified resumes, allowing recruiters to open and review them directly.
+Resumes are sorted by their mean score and the top `count` resumes (from Stage 1) are selected. Only these resumes' chunks proceed to the analysis step.
+
+### Stage 5: Streaming Analysis
+
+Chunks from the top-ranked resumes are passed to Gemini for evaluation. The response is streamed token-by-token via Server-Sent Events (SSE) for real-time display.
+
+### Stage 6: Resume File Links
+
+After the analysis completes, the pipeline yields clickable links to the original PDF files of the top-ranked resumes, allowing recruiters to open and review them directly in a new browser tab.
 
 ---
 
@@ -272,9 +290,11 @@ The server starts at http://localhost:5001.
 
 2. **Hierarchical chunking**: Resumes are chunked at two levels -- full sections (e.g., all of "Projects") and individual entries (e.g., one specific project). This gives the retrieval system both broad context and fine-grained detail.
 
-3. **LLM verification step**: Vector search can return false positives. Adding a verification step where the LLM filters chunks before the final analysis ensures only genuinely relevant resumes are presented to the user.
+3. **Resume-level ranking with top-k mean**: Instead of returning individual chunks, SkillLens scores entire resumes by averaging their top 3 chunk similarity scores. This prevents resumes with more sections from being penalized (mean dilution) and ensures ranking reflects the strongest matching areas.
 
-4. **Server-Sent Events for streaming**: SSE provides real-time token-by-token display of the LLM response without the complexity of WebSockets, giving users immediate feedback while the analysis is generated.
+4. **LLM-controlled result count**: The number of resumes returned is extracted from the user's natural language query by the LLM ("a candidate" = 1, "top 5" = 5), eliminating the need for manual configuration.
+
+5. **Server-Sent Events for streaming**: SSE provides real-time token-by-token display of the LLM response without the complexity of WebSockets, giving users immediate feedback while the analysis is generated.
 
 ---
 

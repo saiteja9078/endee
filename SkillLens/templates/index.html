@@ -605,6 +605,53 @@
             font-size: 0.75rem;
         }
 
+        /* Resume ranking */
+        .ranking-panel {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .ranking-header {
+            padding: 10px 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .ranking-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 14px;
+            border-bottom: 1px solid #1e1e1e;
+            font-size: 0.8rem;
+        }
+        .ranking-row:last-child { border-bottom: none; }
+        .ranking-rank {
+            width: 24px;
+            color: #666;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .ranking-name {
+            flex: 1;
+            color: #ddd;
+        }
+        .ranking-score {
+            font-family: monospace;
+            color: #aaa;
+            font-size: 0.78rem;
+            margin-left: 8px;
+        }
+        .ranking-chunks {
+            color: #666;
+            font-size: 0.72rem;
+            margin-left: 8px;
+            min-width: 60px;
+            text-align: right;
+        }
+
         /* Spinner */
         .spinner-sm {
             display: inline-block;
@@ -943,6 +990,12 @@
                     return;
                 }
 
+                // Handle ranking payload (comes first)
+                if (token && typeof token === 'object' && token.__ranking__) {
+                    renderRanking(assistantText, token.__ranking__);
+                    return;
+                }
+
                 // Handle sources payload
                 if (token && typeof token === 'object' && token.__sources__) {
                     if (!sourcesRendered) {
@@ -1028,16 +1081,42 @@
             let linksHtml = files.map(f => {
                 const filename = f.filename || (f.resume_id + '.pdf');
                 const name = (f.person_name || f.resume_id || 'Unknown').replace(/\b\w/g, c => c.toUpperCase());
+                const scoreText = f.score ? ` (score: ${f.score})` : '';
                 return `<a class="resume-file-link" href="/files/${encodeURIComponent(filename)}" target="_blank" rel="noopener">
                     <span class="resume-file-icon">&#128196;</span>
-                    <span class="resume-file-name">${escapeHtml(name)} &mdash; ${escapeHtml(filename)}</span>
+                    <span class="resume-file-name">${escapeHtml(name)}${scoreText}</span>
                     <span class="resume-file-arrow">&#8599;</span>
                 </a>`;
             }).join('');
 
             wrapper.innerHTML = `
-                <div class="resume-files-label">Referenced Resumes</div>
+                <div class="resume-files-label">Top Ranked Resumes</div>
                 ${linksHtml}
+            `;
+            container.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function renderRanking(container, ranking) {
+            if (!ranking || ranking.length === 0) return;
+            container.innerHTML = '';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'ranking-panel';
+
+            let rowsHtml = ranking.map((r, i) => {
+                const name = (r.resume_id || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                return `<div class="ranking-row">
+                    <span class="ranking-rank">${i + 1}.</span>
+                    <span class="ranking-name">${escapeHtml(name)}</span>
+                    <span class="ranking-score">${r.score}</span>
+                    <span class="ranking-chunks">${r.chunks_matched} chunks</span>
+                </div>`;
+            }).join('');
+
+            wrapper.innerHTML = `
+                <div class="ranking-header">Resume Ranking (top-3 chunk mean)</div>
+                ${rowsHtml}
             `;
             container.appendChild(wrapper);
             chatMessages.scrollTop = chatMessages.scrollHeight;

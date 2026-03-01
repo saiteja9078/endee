@@ -137,7 +137,7 @@ async def query():
         return jsonify({"error": "Missing query parameter 'q'"}), 400
 
     collection = request.args.get("collection", DEFAULT_COLLECTION).strip()
-    limit = int(request.args.get("limit", "8"))
+    limit = int(request.args.get("limit", "3"))
 
     async def generate():
         loop = asyncio.get_event_loop()
@@ -150,7 +150,7 @@ async def query():
 
         def run_agent():
             try:
-                for token in execute(prompt=user_query, collection_name=collection, limit=limit):
+                for token in execute(prompt=user_query, collection_name=collection, top_n_resumes=limit):
                     if isinstance(token, dict):
                         # Sources payload — serialize as JSON
                         token_queue.put(token)

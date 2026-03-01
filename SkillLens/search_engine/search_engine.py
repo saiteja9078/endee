@@ -37,6 +37,17 @@ class SearchEngine:
             self._index = self.client.get_index(name=self.collection_name)
         return self._index
 
+    def get_total_elements(self):
+        """Get total number of vectors in the current collection."""
+        try:
+            result = self.client.list_indexes()
+            for idx in result.get("indexes", []):
+                if idx.get("name") == self.collection_name:
+                    return idx.get("total_elements", 0)
+        except Exception:
+            pass
+        return 0
+
     def _create_collection(self, collection_name):
         """Create a new hybrid index in Endee."""
         self.collection_name = collection_name
