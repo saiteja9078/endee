@@ -1,0 +1,82 @@
+[
+  {
+    "chunk_id": "f541f7bffbee29a40aa8af54ca9ad1dd",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "personal info",
+    "sub_section": "",
+    "level": "section",
+    "content": "Bejavada Sai Teja\n§ Github | ï Linkedin | # b.saiteja.ai@gmail.com | H +91 6301105642\nVallabhapuram, Guntur, Andhra Pradesh",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Personal Info\n\nBejavada Sai Teja\n§ Github | ï Linkedin | # b.saiteja.ai@gmail.com | H +91 6301105642\nVallabhapuram, Guntur, Andhra Pradesh"
+  },
+  {
+    "chunk_id": "2337d4dd372013c4853b7d756a17eab3",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "education",
+    "sub_section": "",
+    "level": "section",
+    "content": "B.Tech CSE at Bennett University, Uttar Pradesh\n2023 - 2027\nDean’s List recipient (2024) - Achieved twice for academic excellence\n(CGPA: 9.14)\nIntermediate Education at Sri Chaitanya Junior College, AP\n2021 - 2023",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Education\n\nB.Tech CSE at Bennett University, Uttar Pradesh\n2023 - 2027\nDean’s List recipient (2024) - Achieved twice for academic excellence\n(CGPA: 9.14)\nIntermediate Education at Sri Chaitanya Junior College, AP\n2021 - 2023"
+  },
+  {
+    "chunk_id": "a50af0159d09c69a501ef8c77e2ba1fc",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "technical skills",
+    "sub_section": "",
+    "level": "section",
+    "content": "Python, C++, JavaScript\nAI/ML\nMachine Learning, Deep Learning, NLP, Generative AI, RAG\nFrameworks\nLangChain, LangGraph, PyTorch, Scikit-learn, NumPy, Pandas, Matplotlib, MediaPipe,\nQuart\nDatabases\nPostgreSQL, MongoDB, Supabase, Chroma, Pinecone\nTools\nGit, Docker, LangSmith, Hugging Face, WebSocket\nCore\nData Structures & Algorithms",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Technical Skills\n\nPython, C++, JavaScript\nAI/ML\nMachine Learning, Deep Learning, NLP, Generative AI, RAG\nFrameworks\nLangChain, LangGraph, PyTorch, Scikit-learn, NumPy, Pandas, Matplotlib, MediaPipe,\nQuart\nDatabases\nPostgreSQL, MongoDB, Supabase, Chroma, Pinecone\nTools\nGit, Docker, LangSmith, Hugging Face, WebSocket\nCore\nData Structures & Algorithms"
+  },
+  {
+    "chunk_id": "11224f597cd84cf93f75df795692a48c",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "projects",
+    "sub_section": "",
+    "level": "section",
+    "content": "Float Chat | Python, LangGraph, Gemini, MongoDB, PostgreSQL\n2025\n– Pioneered a novel data retrieval paradigm for geospatial oceanographic data by replacing traditional\nRAG/embeddings with MongoDB geospatial filtering + PostgreSQL structured retrieval, recognizing\nthat coordinate-based float data requires spatial indexing rather than semantic similarity search.\n– Architected a 3-tier multi-agent system (Decomposition, Filter, SQL agents) using LangGraph where\nagents autonomously route queries to appropriate data access patterns MongoDB for location/metadata\nfiltering, PostgreSQL for profile.\nAI-Powered Conversational ChatBot | Python, Quart, LangChain\n2026\n– Developed a high-performance real-time conversational AI backend with WebSocket bi-directional com-\nmunication, LLM streaming, and cloud-based data persistence using Supabase PostgreSQL.\n– Integrated Google Gemini AI with LangChain/LangGraph for tool-calling capabilities including weather\nqueries (OpenWeather API) and web search (SerpAPI) with asynchronous architecture for scalable\nconcurrent connections.\nFarmForecast | Kotlin, TensorFlow, Sklearn\n2024\n– Developed an offline Android application enabling farmers to detect crop diseases from a single photo\nwith 90%+ accuracy.\n– Implemented crop recommendations based on soil parameters to optimize yield.\n– Integrated a feature to find and track real-time crop prices, assisting farmers in selling at optimal market\nrates.",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Projects\n\nFloat Chat | Python, LangGraph, Gemini, MongoDB, PostgreSQL\n2025\n– Pioneered a novel data retrieval paradigm for geospatial oceanographic data by replacing traditional\nRAG/embeddings with MongoDB geospatial filtering + PostgreSQL structured retrieval, recognizing\nthat coordinate-based float data requires spatial indexing rather than semantic similarity search.\n– Architected a 3-tier multi-agent system (Decomposition, Filter, SQL agents) using LangGraph where\nagents autonomously route queries to appropriate data access patterns MongoDB for location/metadata\nfiltering, PostgreSQL for profile.\nAI-Powered Conversational ChatBot | Python, Quart, LangChain\n2026\n– Developed a high-performance real-time conversational AI backend with WebSocket bi-directional com-\nmunication, LLM streaming, and cloud-based data persistence using Supabase PostgreSQL.\n– Integrated Google Gemini AI with LangChain/LangGraph for tool-calling capabilities including weather\nqueries (OpenWeather API) and web search (SerpAPI) with asynchronous architecture for scalable\nconcurrent connections.\nFarmForecast | Kotlin, TensorFlow, Sklearn\n2024\n– Developed an offline Android application enabling farmers to detect crop diseases from a single photo\nwith 90%+ accuracy.\n– Implemented crop recommendations based on soil parameters to optimize yield.\n– Integrated a feature to find and track real-time crop prices, assisting farmers in selling at optimal market\nrates."
+  },
+  {
+    "chunk_id": "b46ac0d841f35714b12b5511e8e75850",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "projects",
+    "sub_section": "float chat",
+    "level": "sub_item",
+    "content": "Float Chat | Python, LangGraph, Gemini, MongoDB, PostgreSQL\n2025\n– Pioneered a novel data retrieval paradigm for geospatial oceanographic data by replacing traditional\nRAG/embeddings with MongoDB geospatial filtering + PostgreSQL structured retrieval, recognizing\nthat coordinate-based float data requires spatial indexing rather than semantic similarity search.\n– Architected a 3-tier multi-agent system (Decomposition, Filter, SQL agents) using LangGraph where\nagents autonomously route queries to appropriate data access patterns MongoDB for location/metadata\nfiltering, PostgreSQL for profile.",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Projects | Entry: Float Chat\n\nFloat Chat | Python, LangGraph, Gemini, MongoDB, PostgreSQL\n2025\n– Pioneered a novel data retrieval paradigm for geospatial oceanographic data by replacing traditional\nRAG/embeddings with MongoDB geospatial filtering + PostgreSQL structured retrieval, recognizing\nthat coordinate-based float data requires spatial indexing rather than semantic similarity search.\n– Architected a 3-tier multi-agent system (Decomposition, Filter, SQL agents) using LangGraph where\nagents autonomously route queries to appropriate data access patterns MongoDB for location/metadata\nfiltering, PostgreSQL for profile."
+  },
+  {
+    "chunk_id": "9e7e60d023029b3f717d1741bb2255d4",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "projects",
+    "sub_section": "ai-powered conversational chatbot",
+    "level": "sub_item",
+    "content": "AI-Powered Conversational ChatBot | Python, Quart, LangChain\n2026\n– Developed a high-performance real-time conversational AI backend with WebSocket bi-directional com-\nmunication, LLM streaming, and cloud-based data persistence using Supabase PostgreSQL.\n– Integrated Google Gemini AI with LangChain/LangGraph for tool-calling capabilities including weather\nqueries (OpenWeather API) and web search (SerpAPI) with asynchronous architecture for scalable\nconcurrent connections.",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Projects | Entry: AI-Powered Conversational ChatBot\n\nAI-Powered Conversational ChatBot | Python, Quart, LangChain\n2026\n– Developed a high-performance real-time conversational AI backend with WebSocket bi-directional com-\nmunication, LLM streaming, and cloud-based data persistence using Supabase PostgreSQL.\n– Integrated Google Gemini AI with LangChain/LangGraph for tool-calling capabilities including weather\nqueries (OpenWeather API) and web search (SerpAPI) with asynchronous architecture for scalable\nconcurrent connections."
+  },
+  {
+    "chunk_id": "9234b1bce4dbaef90a9916a81c87c4c3",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "projects",
+    "sub_section": "farmforecast",
+    "level": "sub_item",
+    "content": "FarmForecast | Kotlin, TensorFlow, Sklearn\n2024\n– Developed an offline Android application enabling farmers to detect crop diseases from a single photo\nwith 90%+ accuracy.\n– Implemented crop recommendations based on soil parameters to optimize yield.\n– Integrated a feature to find and track real-time crop prices, assisting farmers in selling at optimal market\nrates.",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Projects | Entry: FarmForecast\n\nFarmForecast | Kotlin, TensorFlow, Sklearn\n2024\n– Developed an offline Android application enabling farmers to detect crop diseases from a single photo\nwith 90%+ accuracy.\n– Implemented crop recommendations based on soil parameters to optimize yield.\n– Integrated a feature to find and track real-time crop prices, assisting farmers in selling at optimal market\nrates."
+  },
+  {
+    "chunk_id": "1d47d1b51c81956cb0f04193a2a7a2c9",
+    "resume_id": "saiteja_resume_ai",
+    "person_name": "bejavada sai teja",
+    "section": "certifications",
+    "sub_section": "",
+    "level": "section",
+    "content": "Improving Deep Neural Networks: Hyperparameter Tuning, Regularization and Optimization\nCoursera Verification Link",
+    "content_with_context": "Resume: Bejavada Sai Teja | Section: Certifications\n\nImproving Deep Neural Networks: Hyperparameter Tuning, Regularization and Optimization\nCoursera Verification Link"
+  }
+]

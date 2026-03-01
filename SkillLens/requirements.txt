@@ -1,0 +1,9 @@
+pymupdf
+python-docx
+endee
+fastembed
+langchain-google-genai
+langchain-core
+python-dotenv
+quart
+quart-cors
