@@ -55,7 +55,7 @@ class SearchEngine:
             self.client.create_index(
                 name=collection_name,
                 dimension=768,          # bge-base-en-v1.5 output dim
-                sparse_dim=30000,       # SPLADE vocabulary size
+                sparse_dim=30522,       # SPLADE vocabulary size (BERT wordpiece)
                 space_type="cosine",
             )
             self._index = self.client.get_index(name=collection_name)

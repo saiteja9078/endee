@@ -29,7 +29,7 @@ Constraints:
 - Do NOT generate answers, summaries, or explanations.
 
 Enhancement Guidelines:
-- Extract and explicitly state key skills, technologies, roles, experience level, domain, and constraints if present.
+- Extract and explicitly state key skills, technologies, roles, experience level, domain, and constraints if present if not present then mention the skills / experience or anything that has to be need for user query.
 - Normalize vague terms into concrete, searchable phrasing.
 - Preserve the original intent and meaning of the user query.
 
@@ -42,7 +42,7 @@ Number Detection:
 
 Output Format:
 - Return ONLY a valid JSON object, nothing else:
-  {"query": "the enhanced retrieval query", "count": 3}
+  {{"query": "the enhanced retrieval query", "count": 3}}
 - No markdown, no code blocks, no commentary."""
 
 
