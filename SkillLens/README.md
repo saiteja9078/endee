@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-SkillLens is an AI-powered resume screening tool that lets recruiters upload resumes and search across them using natural language queries. It combines **semantic vector search** with **LLM-powered analysis** to find the best-matching candidates for any role or skill set.
+SkillLens is an AI-powered resume screening tool that lets recruiters upload resumes and search across them using natural language queries. It combines **semantic vector search** with **LLM-powered query enhancement** to find and rank the best-matching candidates for any role or skill set.
 
 ### Problem Statement
 
@@ -13,11 +13,11 @@ SkillLens solves this with a **Retrieval-Augmented Generation (RAG) pipeline** t
 1. Understands the _meaning_ behind queries, not just keywords
 2. Retrieves all resume chunks and scores every resume using hybrid vector search
 3. Ranks resumes by top-k mean similarity and lets the LLM control how many to return
-4. Generates detailed candidate evaluations streamed in real time
+4. Returns ranked resumes with their matching scores
 
 ### Use Case
 
-**RAG (Retrieval-Augmented Generation)** for resume retrieval and evaluation, where vector search is the core retrieval mechanism.
+**RAG (Retrieval-Augmented Generation)** for resume retrieval and ranking, where vector search is the core retrieval mechanism.
 
 ---
 
@@ -39,13 +39,10 @@ User Query
     |                     top-3 chunk mean score per resume
     v
 [Top-K Selection] ------- Take top k resumes (k from user query)
-    |                     Only these resumes proceed
+    |                     Only these resumes are returned
     v
-[Streaming Analysis] ---- Gemini generates a detailed evaluation
-    |                     streamed token-by-token via SSE
-    v
-[Frontend Display] ------ Chat interface shows ranking table,
-                          sources, analysis, and resume PDF links
+[JSON Response] --------- Returns ranked resumes with scores
+                          and clickable PDF links in the UI
 ```
 
 ### Technical Stack
@@ -56,7 +53,7 @@ User Query
 | LLM               | Google Gemini 2.5 Flash (via LangChain)        |
 | Dense Embeddings  | BAAI/bge-base-en-v1.5 (768-dim, via fastembed) |
 | Sparse Embeddings | SPLADE++ (prithvida/Splade_PP_en_v1)           |
-| Backend           | Python, Quart (async), Server-Sent Events      |
+| Backend           | Python, FastAPI, Uvicorn                       |
 | Frontend          | HTML, CSS, JavaScript (no frameworks)          |
 | PDF Parsing       | PyMuPDF (fitz)                                 |
 
@@ -64,8 +61,8 @@ User Query
 
 ```
 SkillLens/
-|-- agent.py                    # RAG pipeline: prompt enhancement, ranking, streaming
-|-- app.py                      # Quart web server with REST + SSE endpoints
+|-- agent.py                    # RAG pipeline: prompt enhancement, ranking, scoring
+|-- app.py                      # FastAPI web server with REST endpoints
 |-- requirements.txt            # Python dependencies
 |-- .env                        # Environment variables (GOOGLE_API_KEY)
 |-- templates/
@@ -133,7 +130,6 @@ At query time, the user's query is embedded with the same models and searched ag
 
 ```python
 # Retrieve ALL chunks to score every resume
-total = client.list_indexes()  # get total_elements count
 results = index.query(
     vector=query_dense_embedding,
     sparse_indices=query_sparse_indices,
@@ -149,18 +145,19 @@ This hybrid approach combines:
 
 ### 4. Collection Management
 
-The application uses the Endee SDK to list, create, and query multiple indexes (collections), allowing users to organize resumes by job posting, department, or batch:
+The application uses the Endee SDK to list, create, delete, and query multiple indexes (collections), allowing users to organize resumes by job posting, department, or batch:
 
 ```python
-result = client.list_indexes()   # List all collections
+result = client.list_indexes()                    # List all collections
 index = client.get_index(name="collection_name")  # Access specific collection
+client.delete_index("collection_name")            # Delete a collection
 ```
 
 ---
 
 ## RAG Pipeline Detail
 
-The RAG pipeline in `agent.py` consists of six stages:
+The RAG pipeline in `agent.py` consists of four stages:
 
 ### Stage 1: Prompt Enhancement + Count Extraction
 
@@ -186,17 +183,33 @@ Chunks are grouped by `resume_id`. For each resume, the top 3 highest-scoring ch
 # Result: Resume A ranks higher
 ```
 
-### Stage 4: Top-K Selection
+### Stage 4: JSON Response
 
-Resumes are sorted by their mean score and the top `count` resumes (from Stage 1) are selected. Only these resumes' chunks proceed to the analysis step.
+The ranked resumes are returned as a JSON response containing each resume's ID, person name, raw similarity score, number of matched chunks, and filename. The frontend displays these in a ranked table with score bars and clickable links to the original PDF files.
 
-### Stage 5: Streaming Analysis
+Example response:
 
-Chunks from the top-ranked resumes are passed to Gemini for evaluation. The response is streamed token-by-token via Server-Sent Events (SSE) for real-time display.
-
-### Stage 6: Resume File Links
-
-After the analysis completes, the pipeline yields clickable links to the original PDF files of the top-ranked resumes, allowing recruiters to open and review them directly in a new browser tab.
+```json
+{
+  "query": "AI/ML engineer with deep learning, PyTorch, LangChain experience",
+  "resumes": [
+    {
+      "resume_id": "john_doe_resume",
+      "person_name": "John Doe",
+      "score": 0.8523,
+      "chunks_matched": 12,
+      "filename": "john_doe_resume.pdf"
+    },
+    {
+      "resume_id": "jane_smith_resume",
+      "person_name": "Jane Smith",
+      "score": 0.7891,
+      "chunks_matched": 9,
+      "filename": "jane_smith_resume.pdf"
+    }
+  ]
+}
+```
 
 ---
 
@@ -257,30 +270,38 @@ Replace `your_google_api_key_here` with your actual Gemini API key.
 ### Step 5: Run the Application
 
 ```bash
+uvicorn app:app --host 0.0.0.0 --port 5001 --reload
+```
+
+Or simply:
+
+```bash
 python app.py
 ```
 
-The server starts at http://localhost:5001.
+The server starts at http://localhost:5001. API docs are available at http://localhost:5001/docs.
 
 ### Step 6: Use the Application
 
 1. Open http://localhost:5001 in your browser
 2. **Upload resumes**: Use the sidebar to drag-and-drop or browse for PDF/DOCX files. Enter a collection name and click "Upload"
 3. **Select a collection**: Click a collection in the sidebar or use the dropdown in the header
-4. **Search**: Type a natural language query in the chat input (e.g., "Find candidates with Python and machine learning experience") and press Enter
-5. **Review results**: The interface shows retrieved chunks, a streamed LLM analysis, and clickable links to the verified resume files
+4. **Delete a collection**: Hover over a collection in the sidebar and click the × icon to delete it
+5. **Search**: Type a natural language query in the chat input (e.g., "Find candidates with Python and machine learning experience") and press Enter
+6. **Review results**: The interface shows ranked resumes with similarity scores and clickable links to the original PDF files
 
 ---
 
 ## API Endpoints
 
-| Method | Endpoint            | Description                    |
-| ------ | ------------------- | ------------------------------ |
-| GET    | `/`                 | Serves the frontend            |
-| POST   | `/upload`           | Upload and ingest resume files |
-| GET    | `/query`            | SSE streaming RAG query        |
-| GET    | `/collections`      | List all Endee indexes         |
-| GET    | `/files/<filename>` | Serve an uploaded resume file  |
+| Method | Endpoint              | Description                    |
+| ------ | --------------------- | ------------------------------ |
+| GET    | `/`                   | Serves the frontend            |
+| POST   | `/upload`             | Upload and ingest resume files |
+| GET    | `/query`              | RAG query, returns JSON        |
+| GET    | `/collections`        | List all Endee indexes         |
+| DELETE | `/collections/{name}` | Delete an Endee index          |
+| GET    | `/files/<filename>`   | Serve an uploaded resume file  |
 
 ---
 
@@ -294,7 +315,7 @@ The server starts at http://localhost:5001.
 
 4. **LLM-controlled result count**: The number of resumes returned is extracted from the user's natural language query by the LLM ("a candidate" = 1, "top 5" = 5), eliminating the need for manual configuration.
 
-5. **Server-Sent Events for streaming**: SSE provides real-time token-by-token display of the LLM response without the complexity of WebSockets, giving users immediate feedback while the analysis is generated.
+5. **FastAPI with JSON responses**: Using FastAPI provides automatic OpenAPI documentation, type validation, and clean JSON responses. Returning structured JSON (instead of SSE streaming) makes the API easier to consume by any client -- web, mobile, or programmatic.
 
 ---
 

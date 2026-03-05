@@ -1,7 +1,7 @@
 """
 RAG Agent — Google Generative AI + Endee
 =========================================
-Prompt enhancement → Endee hybrid search → streaming answer generation.
+Prompt enhancement → Endee hybrid search → resume ranking with normalized scores.
 """
 
 import os
@@ -56,8 +56,7 @@ def rank_resumes(sources, top_k_chunks=3, top_n_resumes=5):
       3. Compute mean of those top scores
 
     Returns:
-      - Sorted list of (resume_id, mean_score, chunk_count)
-      - Dict mapping resume_id -> list of source chunks
+      - Sorted list of (resume_id, mean_score, chunk_count, person_name)
     """
     from collections import defaultdict
 
@@ -79,35 +78,56 @@ def rank_resumes(sources, top_k_chunks=3, top_n_resumes=5):
             mean_score = sum(top_scores) / len(top_scores)
         else:
             mean_score = 0.0
-        resume_scores.append((rid, mean_score, len(chunks)))
+
+        # Get person name from the first chunk
+        person_name = chunks[0].get("person_name", "Unknown") if chunks else "Unknown"
+        resume_scores.append((rid, mean_score, len(chunks), person_name))
 
     # Sort by mean score descending
     resume_scores.sort(key=lambda x: x[1], reverse=True)
 
     # Take top N resumes
-    top_resumes = resume_scores[:top_n_resumes]
-    top_ids = {r[0] for r in top_resumes}
+    return resume_scores[:top_n_resumes]
 
-    return top_resumes, {rid: resume_chunks[rid] for rid in top_ids}
+
+def normalize_scores(resume_scores):
+    """
+    Min-max normalize scores to [0, 1] range.
+    If all scores are equal, all get 1.0.
+    """
+    if not resume_scores:
+        return []
+
+    raw_scores = [s[1] for s in resume_scores]
+    min_score = min(raw_scores)
+    max_score = max(raw_scores)
+    score_range = max_score - min_score
+
+    normalized = []
+    for rid, score, count, person_name in resume_scores:
+        if score_range == 0:
+            norm_score = 1.0
+        else:
+            norm_score = (score - min_score) / score_range
+        normalized.append((rid, norm_score, count, person_name))
+
+    return normalized
 
 
 def execute(prompt: str, collection_name: str, top_n_resumes: int = 3):
     """
-    RAG pipeline with resume-level ranking.
+    RAG pipeline — returns resumes with matching scores.
 
     Pipeline:
       1. Enhance user prompt + extract desired count
       2. Retrieve ALL chunks from Endee (single query)
       3. Group by resume_id, compute top-3 mean score per resume
-      4. Rank resumes, take top N (N from user query)
-      5. Stream LLM analysis using only top-ranked resumes
-      6. Yield resume file links
+      4. Return ranked resumes with scores
 
-    Yields:
-      - dict '__ranking__'      : resume scores and ranking
-      - dict '__sources__'      : chunks from top-ranked resumes
-      - str tokens              : streamed LLM answer
-      - dict '__resume_files__' : links to top-ranked resumes
+    Returns:
+      dict with:
+        - query: the enhanced query used
+        - resumes: list of {resume_id, person_name, score, chunks_matched, filename}
     """
     import json as _json
     from pathlib import Path as _Path
@@ -138,10 +158,24 @@ def execute(prompt: str, collection_name: str, top_n_resumes: int = 3):
     # Step 2: Retrieve ALL chunks from the collection
     engine = SearchEngine(collection_name=collection_name)
     total = engine.get_total_elements()
-    if total == 0:
-        total = 50  # fallback
+    # total_elements can be stale after recent inserts, so always attempt search
+    search_limit = max(total, 50)
 
-    results = engine.hybrid_search(enhanced_prompt, limit=max(total, 50))
+    try:
+        results = engine.hybrid_search(enhanced_prompt, limit=search_limit)
+    except Exception as e:
+        return {
+            "query": enhanced_prompt,
+            "resumes": [],
+            "error": f"Search failed on '{collection_name}': {str(e)}",
+        }
+
+    if not results:
+        return {
+            "query": enhanced_prompt,
+            "resumes": [],
+            "message": f"No results found in collection '{collection_name}'.",
+        }
 
     # Build source list with scores
     sources = []
@@ -149,84 +183,36 @@ def execute(prompt: str, collection_name: str, top_n_resumes: int = 3):
         meta = item.get("meta", {})
         sources.append({
             "person_name": meta.get("person_name", "Unknown"),
-            "section": meta.get("section", ""),
-            "sub_section": meta.get("sub_section", ""),
-            "level": meta.get("level", ""),
-            "content": meta.get("content", ""),
-            "content_with_context": meta.get(
-                "content_with_context", meta.get("content", str(meta))
-            ),
             "resume_id": meta.get("resume_id", ""),
             "similarity": item.get("similarity", 0.0),
         })
 
     # Step 3: Rank resumes by top-3 mean similarity
-    resume_scores, resume_chunks = rank_resumes(
+    resume_scores = rank_resumes(
         sources, top_k_chunks=3, top_n_resumes=top_n_resumes
     )
 
-    # Yield ranking info for the frontend
-    yield {"__ranking__": [
-        {"resume_id": rid, "score": round(score, 4), "chunks_matched": count}
-        for rid, score, count in resume_scores
-    ]}
-
-    # Get the top-ranked resumes' chunks
-    top_ids = {r[0] for r in resume_scores[:top_n_resumes]}
-    verified_sources = [s for s in sources if s["resume_id"] in top_ids]
-
-    # Yield verified sources
-    yield {"__sources__": verified_sources}
-
-    # Step 4: Stream the final answer using only top-ranked chunks
-    verified_chunks_text = ""
-    for s in verified_sources:
-        content = s.get("content_with_context", s.get("content", ""))
-        similarity = s.get("similarity", "N/A")
-        verified_chunks_text += f"\n---\n[Score: {similarity}]\n{content}\n"
-
-    answer_temp = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                "You are a resume evaluator. You have to evaluate the resume chunks "
-                "based on the user's prompt and give them the best matching resumes with "
-                "detailed explanation. The resumes have been ranked by similarity score "
-                "(top-3 chunk mean). Focus on explaining why the top-ranked candidates "
-                "are the best match.\n\nResume chunks:\n{chunks}",
-            ),
-            ("user", "prompt: {prompt}"),
-        ]
-    )
-    formatted = answer_temp.format_messages(
-        chunks=verified_chunks_text, prompt=prompt
-    )
-    for ch in model.stream(formatted):
-        yield ch.content
-
-    # Step 5: Yield top-ranked resume files
+    # Step 4: Build response with resume file info
     uploads_dir = _Path(__file__).parent / "uploads"
-    seen = set()
-    resume_files = []
-    for rid, score, count in resume_scores[:top_n_resumes]:
-        if rid and rid not in seen:
-            seen.add(rid)
-            actual_filename = rid + ".pdf"
-            if uploads_dir.exists():
-                for f in uploads_dir.iterdir():
-                    if f.stem == rid:
-                        actual_filename = f.name
-                        break
-            # Get person name from chunks
-            pname = "Unknown"
-            for s in verified_sources:
-                if s["resume_id"] == rid:
-                    pname = s["person_name"]
+    resumes = []
+    for rid, score, count, person_name in resume_scores:
+        # Find actual filename on disk
+        actual_filename = rid + ".pdf"
+        if uploads_dir.exists():
+            for f in uploads_dir.iterdir():
+                if f.stem == rid:
+                    actual_filename = f.name
                     break
-            resume_files.append({
-                "resume_id": rid,
-                "person_name": pname,
-                "filename": actual_filename,
-                "score": round(score, 4),
-            })
-    yield {"__resume_files__": resume_files}
+
+        resumes.append({
+            "resume_id": rid,
+            "person_name": person_name,
+            "score": round(score, 4),
+            "chunks_matched": count,
+            "filename": actual_filename,
+        })
+
+    return {
+        "query": enhanced_prompt,
+        "resumes": resumes,
+    }
