@@ -319,6 +319,3 @@ The server starts at http://localhost:5001. API docs are available at http://loc
 
 ---
 
-## License
-
-This project is part of the Endee internship evaluation program.
